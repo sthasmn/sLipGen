@@ -1,99 +1,100 @@
-# LR-ASD: Lightweight and Robust Network for Active Speaker Detection
+# LipGen: Automatic Active Speaker Sentence Video Generator
+
+## Overview
+
+**LipGen** is a pipeline for generating **sentence-level active speaker video clips** from raw videos.  
+The system combines **speech transcription** with **active speaker detection** so that each spoken sentence is matched to the **correct face crop video** of the speaker.
+
+This allows us to:
+- Automatically extract **sentence-aligned video segments** of the speaker’s face.
+- Support **in-the-wild videos** such as TV programs or interviews.
+- Use the outputs for **lip-reading datasets**, **communication research**, or other multimodal AI applications.
+
+---
+
+## How It Works
+
+The workflow integrates two main components:
+
+1. **Active Speaker Detection (LR-ASD)**  
+   - Based on the [LR-ASD repository](https://github.com/Junhua-Liao/LR-ASD).  
+   - Detects faces, tracks them across frames, and estimates which speaker is active.  
+   - Produces intermediate files:  
+     - `pyavi/` : resampled 25fps video and audio (`audio.wav`).  
+     - `pyframes/` : extracted frames.  
+     - `pywork/` : metadata (`faces.pckl`, `tracks.pckl`, `scores.pckl`, etc.).  
+     - `pycrop/` : cropped face track videos.  
+
+2. **Speech Transcription (Whisper)**  
+   - Runs on the **resampled audio** produced by LR-ASD (`pyavi/audio.wav`).  
+   - Transcribes full speech into **sentence-level segments** with start and end times.  
+   - Output saved in `manifest.json`.
+
+3. **Sentence-to-Speaker Alignment**  
+   - Each transcribed sentence is mapped to the **active speaker track** overlapping that time window.  
+   - A video clip is generated that contains **only the active speaker’s face** for the duration of the sentence.  
+   - Audio is preserved in the output, ensuring the clip matches what the speaker said.
+
+---
+
+## Main Script
+
+Our main working script is:
+
+`bash
+easy_sentence_clips_final.py`
 
 
-This repository contains the code and model weights for the [extended version](https://junhua-liao.github.io/Junhua-Liao/publications/papers/IJCV_2025.pdf) (IJCV 2025) of our conference publication ([A Light Weight Model for Active Speaker Detection](https://openaccess.thecvf.com/content/CVPR2023/papers/Liao_A_Light_Weight_Model_for_Active_Speaker_Detection_CVPR_2023_paper.pdf), CVPR 2023, [code](https://github.com/Junhua-Liao/Light-ASD)):
+### Features
+- Input: a raw video file.  
+- Output: sentence-level **active speaker clips** (video + audio).  
+- Automatically handles LR-ASD processing and Whisper transcription.  
+- Supports an optional flag:
+  - `--skip_asd`: skips LR-ASD if `pywork/`, `pyavi/`, etc. already exist (saves time).
 
-> LR-ASD: Lightweight and Robust Network for Active Speaker Detection  
-> Junhua Liao, Haihan Duan, Kanghui Feng, Wanbing Zhao, Yanbing Yang, Liangyin Chen, Yanru Chen
+---
 
+## Workflow Summary
 
-***
-### Evaluate on AVA-ActiveSpeaker dataset 
+1. **Run LR-ASD** to generate resampled video/audio and face tracks.  
+2. **Run Whisper** on resampled audio to get sentence timestamps.  
+3. **Match sentences with active speakers** using LR-ASD scores and track metadata.  
+4. **Export clips** containing only the speaking face with aligned audio.
 
-#### Data preparation
-Use the following code to download and preprocess the AVA dataset.
-```
-python train.py --dataPathAVA AVADataPath --download 
-```
-The AVA dataset and the labels will be downloaded into `AVADataPath`.
+---
 
-#### Training
-You can train the model on the AVA dataset by using:
-```
-python train.py --dataPathAVA AVADataPath
-```
-`exps/exps1/score.txt`: output score file, `exps/exp1/model/model_00xx.model`: trained model, `exps/exps1/val_res.csv`: prediction for val set.
+## Example Usage
 
-#### Testing
-Our model weights have been placed in the `weight` folder. It performs `mAP: 94.45%` in the validation set. You can check it by using: 
-```
-python train.py --dataPathAVA AVADataPath --evaluation
-```
+```bash
+# Standard usage (runs LR-ASD + Whisper + alignment)
+python easy_sentence_clips_final.py input_video.mp4
 
-
-***
-### Evaluate on Columbia ASD dataset
-
-#### Testing
-The model weights trained on the AVA dataset have been placed in the `weight` folder. Then run the following code.
-```
-python Columbia_test.py --evalCol --colSavePath colDataPath
-```
-The Columbia ASD dataset and the labels will be downloaded into `colDataPath`. And you can get the following F1 result.
-| Name |  Bell  |  Boll  |  Lieb  |  Long  |  Sick  |  Avg.  |
-|----- | ------ | ------ | ------ | ------ | ------ | ------ |
-|  F1  |  88.8% |  77.9% |  90.3% |  85.4% |  88.3% |  86.1% |
-
-We have also provided the model weights fine-tuned on the TalkSet dataset.
-```
-python Columbia_test.py --evalCol --pretrainModel weight/finetuning_TalkSet.model --colSavePath colDataPath
-```
-You can get the following result.
-| Name |  Bell  |  Boll  |  Lieb  |  Long  |  Sick  |  Avg.  |
-|----- | ------ | ------ | ------ | ------ | ------ | ------ |
-|  F1  |  96.9% |  89.4% |  97.6% |  99.0% |  99.2% |  96.4% |
-
-
-***
-### An ASD Demo with pretrained LR-ASD model
-You can put the raw video (`.mp4` and `.avi` are both fine) into the `demo` folder, such as `0001.mp4`. 
-```
-python Columbia_test.py --videoName 0001 --videoFolder demo
-```
-By default, the model loads weights trained on the AVA-ActiveSpeaker dataset. If you want to load weights fine-tuned on TalkSet, you can execute the following code.
-```
-python Columbia_test.py --videoName 0001 --videoFolder demo --pretrainModel weight/finetuning_TalkSet.model
-```
-You can obtain the output video `demo/0001/pyavi/video_out.avi`, where the active speaker is marked by a green box and the non-active speaker by a red box.
-
-
-***
-### Citation
-
-Please cite our papers if you use this code or model weights. 
-
-```
-@InProceedings{Liao_2023_CVPR,
-    title     = {A Light Weight Model for Active Speaker Detection},
-    author    = {Liao, Junhua and Duan, Haihan and Feng, Kanghui and Zhao, Wanbing and Yang, Yanbing and Chen, Liangyin},
-    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-    month     = {June},
-    year      = {2023},
-    pages     = {22932-22941}
-}
-```
-```
-@article{Liao_2025_IJCV,
-  title     = {LR-ASD: Lightweight and Robust Network for Active Speaker Detection},
-  author    = {Liao, Junhua and Duan, Haihan and Feng, Kanghui and Zhao, Wanbing and Yang, Yanbing and Chen, Liangyin and Chen, Yanru},
-  journal   = {International Journal of Computer Vision},
-  pages     = {1--21},
-  year      = {2025},
-  publisher = {Springer}
-}
+# Skip LR-ASD if preprocessing was already done
+python easy_sentence_clips_final.py input_video.mp4 --skip_asd
 ```
 
+## Outputs
+- **manifest.json :**
+ Whisper transcription aligned with resampled audio.
+- **clips/ :** Contains one video per spoken sentence, showing the active speaker’s cropped face with audio.
 
-***
-### Acknowledgments
-Thanks for the support of TaoRuijie's open source [repository](https://github.com/TaoRuijie/TalkNet-ASD) for this research.
+
+## Applications
+- Lip-reading dataset generation (Japanese or other languages).
+- Assistive technology for speech-impaired communication.
+- Media analysis (TV programs, interviews, panel discussions).
+- Multimodal AI research combining audio and visual cues.
+
+## Roadmap
+- [x] Basic LR-ASD integration
+- [x] Whisper transcription with sentence segmentation
+- [x] Sentence-to-speaker alignment
+- [x] Export video clips with audio
+- [ ] Refine alignment in challenging “in-the-wild” videos
+- [ ] Merge into a single production-ready `LipGen.py` script
+
+
+## References
+- LR-ASD: Active Speaker Detection
+- OpenAI Whisper
+
