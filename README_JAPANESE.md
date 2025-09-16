@@ -42,7 +42,7 @@
 主な作業スクリプトは以下です：
 
 ```bash
-easy_sentence_clips_final.py
+runner.py
 ```
 
 ### 特徴
@@ -67,10 +67,10 @@ easy_sentence_clips_final.py
 
 ```bash
 # 標準使用例 (LR-ASD + Whisper + 対応付けを実行)
-python easy_sentence_clips_final.py input_video.mp4
+python runner.py input_folder
 
 # 既に前処理済みの場合はLR-ASDをスキップ
-python easy_sentence_clips_final.py input_video.mp4 --skip_asd
+python runner.py input_foledr --skip_asd
 ```
 
 ## 出力
@@ -88,8 +88,9 @@ python easy_sentence_clips_final.py input_video.mp4 --skip_asd
 - [x] Whisperによる文単位文字起こし  
 - [x] 文とスピーカーの対応付け  
 - [x] 動画クリップの出力（音声付き）  
-- [ ] 難易度の高い “in-the-wild” 動画での精度向上  
-- [ ] 単一のプロダクション用 `LipGen.py` スクリプトへの統合  
+- [ ] 発話者の目視確認  
+- [ ] multiprocessingの実行  (要確認)
+- [ ] 複数PCから同時に実行（PC募集中） 
 
 ## 検証
 | Model          | whisper                                     | whisperx                         | ReazonSpeech |
