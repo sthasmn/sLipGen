@@ -6,8 +6,10 @@ FROM nvidia/cuda:12.1.1-devel-ubuntu22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
 
-# Install system dependencies, including Python, pip, and ffmpeg
+# Install system dependencies, including Python, pip, ffmpeg, and an SSH server
 RUN apt-get update && apt-get install -y \
+    openssh-server \
+    sudo \
     python3.10 \
     python3-pip \
     ffmpeg \
@@ -19,24 +21,30 @@ RUN apt-get update && apt-get install -y \
 # Set python3.10 as the default python
 RUN ln -sf /usr/bin/python3.10 /usr/bin/python
 
-# Set the working directory inside the container
+# --- SSH Server and User Setup ---
+
+# Create a non-root user for development with a default password 'developer'
+RUN useradd -m -s /bin/bash developer && \
+    echo "lipgen:lipgen" | chpasswd && \
+    adduser developer sudo
+
+# Configure the SSH server
+RUN mkdir /var/run/sshd
+# --- EDIT: Re-enable password authentication for internal network use ---
+RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+RUN sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+
+# Expose the SSH port
+EXPOSE 22
+
+# --- Project Setup ---
+
+# Set the working directory inside the container. You will clone your repo here.
 WORKDIR /app
 
-# Copy the project files into the container
-COPY . .
+# The user will install Python dependencies manually after cloning the repo.
+# The final command starts the SSH daemon and keeps the container running.
+CMD ["/usr/sbin/sshd", "-D"]
 
-# Install Python dependencies from requirements.txt
-# Using --no-cache-dir to reduce image size
-RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Download the pre-trained models during the build process
-# This ensures they are available when the container runs
-RUN pip install --no-cache-dir gdown
-RUN python -c "from model.faceDetector.s3fd import S3FD; S3FD(device='cpu')"
-# Note: The main ASD model weight ('finetuning_TalkSet.model') is expected to be in the 'weight/' directory.
-# The Whisper model will be downloaded on first use by the library itself.
-
-# Set the entrypoint to be an interactive bash shell
-# This allows the user to run the optimized_runner.py script with their own video paths
-CMD ["/bin/bash"]
