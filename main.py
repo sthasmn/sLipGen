@@ -1,6 +1,4 @@
 """
-does not use columbus_test.py
-
 A module implementing video scene detection, face detection, tracking, and
 video cropping functionalities using multiple libraries and pre-defined
 configurations.
@@ -299,48 +297,80 @@ def create_final_clip(track_data, start_time, end_time, frames_dir, audio_path, 
     tmp_video_path = output_path.with_suffix('.tmp.mp4')
     tmp_audio_path = output_path.with_suffix('.tmp.aac')
 
-    # Create video from cropped frames
-    all_frame_files = sorted(glob.glob(str(frames_dir / '*.jpg')))
-    writer = cv2.VideoWriter(str(tmp_video_path), cv2.VideoWriter_fourcc(*'mp4v'), fps, (224, 224))
+    try:
+        # --- Create video from cropped frames ---
+        all_frame_files = sorted(glob.glob(str(frames_dir / '*.jpg')))
+        # Check for potential index errors before starting the loop
+        if not all_frame_files:
+            raise FileNotFoundError("No frames found in the frames directory.")
 
-    start_frame = int(start_time * fps)
-    end_frame = int(end_time * fps)
+        writer = cv2.VideoWriter(str(tmp_video_path), cv2.VideoWriter_fourcc(*'mp4v'), fps, (224, 224))
 
-    track_frames_map = {int(f): i for i, f in enumerate(track_data['track']['frame'])}
+        start_frame = int(start_time * fps)
+        end_frame = int(end_time * fps)
+        track_frames_map = {int(f): i for i, f in enumerate(track_data['track']['frame'])}
 
-    for frame_num in range(start_frame, end_frame + 1):
-        if frame_num in track_frames_map:
-            track_idx = track_frames_map[frame_num]
-            image = cv2.imread(all_frame_files[frame_num])
-            if image is None: continue
+        # Check if the calculated frame range is valid
+        if start_frame > len(all_frame_files) or end_frame < 0:
+            raise IndexError(f"Calculated frame range ({start_frame}-{end_frame}) is out of bounds.")
 
-            proc_track = track_data['proc_track']
-            cs = config.CROP_SCALE
-            bs = proc_track['s'][track_idx]
-            bsi = int(bs * (1 + 2 * cs))
+        frames_written = 0
+        for frame_num in range(start_frame, end_frame + 1):
+            if frame_num >= len(all_frame_files):
+                continue  # Skip if frame number exceeds available frames
 
-            frame_padded = np.pad(image, ((bsi, bsi), (bsi, bsi), (0, 0)), 'constant', constant_values=(110, 110))
-            my = proc_track['y'][track_idx] + bsi
-            mx = proc_track['x'][track_idx] + bsi
+            if frame_num in track_frames_map:
+                track_idx = track_frames_map[frame_num]
+                image = cv2.imread(all_frame_files[frame_num])
+                if image is None: continue
 
-            y1, y2 = int(my - bs), int(my + bs * (1 + 2 * cs))
-            x1, x2 = int(mx - bs * (1 + cs)), int(mx + bs * (1 + cs))
+                proc_track = track_data['proc_track']
+                cs = config.CROP_SCALE
+                bs = proc_track['s'][track_idx]
+                bsi = int(bs * (1 + 2 * cs))
 
-            face = frame_padded[y1:y2, x1:x2]
-            writer.write(cv2.resize(face, (224, 224)))
-    writer.release()
+                frame_padded = np.pad(image, ((bsi, bsi), (bsi, bsi), (0, 0)), 'constant', constant_values=(110, 110))
+                my = proc_track['y'][track_idx] + bsi
+                mx = proc_track['x'][track_idx] + bsi
 
-    # Extract audio segment
-    cmd_audio = f"ffmpeg -y -i {audio_path} -ss {start_time:.3f} -to {end_time:.3f} -c:a aac {tmp_audio_path} -loglevel panic"
-    subprocess.run(cmd_audio, shell=True, check=True)
+                y1, y2 = int(my - bs), int(my + bs * (1 + 2 * cs))
+                x1, x2 = int(mx - bs * (1 + cs)), int(mx + bs * (1 + cs))
 
-    # Mux video and audio
-    cmd_mux = f"ffmpeg -y -i {tmp_video_path} -i {tmp_audio_path} -c:v libx264 -c:a copy {output_path} -loglevel panic"
-    subprocess.run(cmd_mux, shell=True, check=True)
+                face = frame_padded[y1:y2, x1:x2]
+                writer.write(cv2.resize(face, (224, 224)))
+                frames_written += 1
+        writer.release()
 
-    # Clean up temporary files
-    os.remove(tmp_video_path)
-    os.remove(tmp_audio_path)
+        if frames_written == 0:
+            raise ValueError("No frames were written to the temporary video file.")
+
+        # --- Extract audio segment ---
+        cmd_audio = f"ffmpeg -y -i \"{audio_path}\" -ss {start_time:.3f} -to {end_time:.3f} -c:a aac \"{tmp_audio_path}\" -loglevel panic"
+        subprocess.run(cmd_audio, shell=True, check=False)
+
+        # --- Muxing Logic ---
+        cmd_mux_list = [
+            'ffmpeg', '-y',
+            '-i', str(tmp_video_path),
+            '-i', str(tmp_audio_path),
+            '-c:v', 'libx264',
+            '-c:a', 'copy',
+            str(output_path),
+            '-loglevel', 'panic'
+        ]
+        subprocess.run(cmd_mux_list, check=True)
+        #print(f"  - SUCCESS: Clip created for {output_path.name}")
+
+    except Exception as e:
+        # This will now catch ANY error (IndexError, subprocess error, etc.)
+        print(f"  - FAILED to process segment {output_path.name}")
+
+    finally:
+        # This block will ALWAYS run, ensuring temporary files are cleaned up.
+        if os.path.exists(tmp_video_path):
+            os.remove(tmp_video_path)
+        if os.path.exists(tmp_audio_path):
+            os.remove(tmp_audio_path)
 
 
 # =====================================================================================
@@ -423,6 +453,7 @@ def main():
     print("[Whisper] Model loaded.")
 
     input_path = Path(sys.argv[1])
+    flag = sys.argv[2] if len(sys.argv) > 2 else None
     if input_path.is_dir():
         video_files = sorted(
             [f for ext in ("*.mp4", "*.avi", "*.mov", "*.mkv", "*.MXF", "*.mxf") for f in input_path.glob(ext)])
@@ -437,8 +468,18 @@ def main():
     for video_path in video_files:
         print(f"\n--- Processing video: {video_path.name} ---")
         try:
-            base_output_dir = run_asd_pipeline(video_path, config)
+            if flag == "skip-asd":
+                print("[ASD] Skipping...")
+                base_output_dir = video_path.parent / video_path.stem
+                manifest_path = base_output_dir / "output" / "manifest.json"
 
+                # Check if the manifest file already exists
+                if manifest_path.is_file():
+                    print(f"Manifest already exists for {video_path.name}. Continuing to next video.")
+                    continue
+
+            else:
+                base_output_dir = run_asd_pipeline(video_path, config)
             audio_path = base_output_dir / "pyavi" / "audio.wav"
             print(f"[Whisper] Transcribing {audio_path}...")
             transcription = whisper_model.transcribe(
@@ -490,7 +531,9 @@ def main():
 
                 if best_track_idx != -1 and best_avg_score > config.MIN_SPEAKER_SCORE_THRESHOLD:
                     clip_filename = f"seg_{seg_idx:04d}_track_{best_track_idx:03d}.mp4"
+                    text_filename = f"seg_{seg_idx:04d}_track_{best_track_idx:03d}.txt"
                     clip_path = final_output_dir / clip_filename
+                    text_path = final_output_dir / text_filename
 
                     # --- FIX: Call the new cropping function ---
                     create_final_clip(
@@ -503,6 +546,7 @@ def main():
                         config=config,
                         fps=fps
                     )
+                    Path(text_path).write_text(text, encoding='utf-8')
 
                     manifest.append({
                         "clip": clip_filename,
