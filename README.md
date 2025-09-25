@@ -1,131 +1,187 @@
-# High-Performance Active Speaker Detection & Clip Generation Pipeline
+# 自動話者検出と動画の時間的セグメンテーションのためのシステム
 
-This project provides a complete, high-performance pipeline for processing videos to identify active speakers and automatically generate precisely timed, sentence-level video clips of their faces. It leverages a state-of-the-art audio-visual deep learning model and is optimized for both single and multi-GPU systems to achieve maximum throughput on large batches of "in-the-wild" videos.
+## プロジェクトの目標
 
-The core of the project is the `optimized_runner.py` script, which implements a parallel, multi-stage processing assembly line.
+このシステムの主な目的は、LRS2やLRS3といった既存の英語データセットに匹敵する、大規模な日本語の読唇術（リップリーディング）データセットの作成を促進することです。このパイプラインは、特に日本のテレビ番組に焦点を当て、自然な環境で撮影された「in-the-wild」ビデオコンテンツを処理するために特化して設計されており、高度な読唇モデルのトレーニングに適した、時間的にセグメント化されたビデオクリップのコーパスを生成します。
 
-## Core Features
+## システムの主な機能
 
-* **Accurate Active Speaker Detection (ASD)**: Utilizes a powerful audio-visual model to determine who is speaking at any given moment with high accuracy.
+* **話者検出（Active Speaker Detection）**: システムは、高度な視聴覚モデルを統合し、ビデオ内の任意の時点において発話している人物を高い精度で特定します。
+* **自動音声認識**: OpenAIのWhisperモデルを実装し、音声をテキストに変換します。このプロセスにより、テキストの書き起こしだけでなく、単語レベルでの正確なタイムスタンプメタデータも生成されます。
+* **シーンを考慮した顔追跡**: シーン検出アルゴリズムを導入し、顔追跡プロセスを制約します。これにより、映画のようなカットをまたいで誤って顔のIDが連結されるのを防ぎます。
+* **発話単位のビデオセグメンテーション**: システムは、特定された話者と書き起こされた文をプログラム的に関連付け、個別の発話ごとにビデオセグメントと対応するテキストトランスクリプトを自動生成します。
+* **中間状態のキャッシング**: ビジョン分析パイプラインの計算負荷が高い結果をキャッシュすることで、迅速な再処理を可能にします。後続の実行では、これらのキャッシュされた成果物を活用でき、下流のパラメータのみが変更された場合の処理時間を大幅に短縮します。
+* **構造化されたデータ出力**: 生成されたすべての成果物は、構造化されたディレクトリ階層内に整理されます。生成されたビデオクリップとその関連メタデータをカタログ化するための`manifest.json`ファイルが生成されます。
 
-* **Automated Transcription**: Employs OpenAI's Whisper model for precise, word-level timestamped transcriptions.
+## システムアーキテクチャとワークフロー
 
-* **Sentence-Level Clip Generation**: Automatically correlates speakers with transcribed sentences to generate individual video clips for each line of dialogue.
-
-* **Flexible GPU Architecture**: Natively supports both single and multi-GPU setups through simple configuration.
-
-* **Parallel Processing Pipeline**: Implements a multi-stage, queue-based system that processes multiple videos simultaneously, maximizing CPU and GPU utilization.
-
-* **Structured Output**: Generates a clean directory structure for each processed video, including a `manifest.json` file that catalogues all generated clips.
-
-## System Architecture
-
-The pipeline consists of four main stages that run concurrently, coordinated by the `optimized_runner.py` script. This design eliminates bottlenecks and ensures that both CPU and GPU resources are kept busy.
-
-1. **[CPU Pool] Pre-processing**: Decodes videos into frames and extracts audio.
-
-2. **[GPU] Transcription**: A dedicated worker runs Whisper to generate transcripts with word-level timestamps.
-
-3. **[GPU] Vision & Scoring**: A second worker runs the entire vision pipeline: scene detection, face tracking, and ASD scoring.
-
-4. **[CPU] Muxing & Output**: A final worker correlates the results, generates the final clips using `ffmpeg`, and writes the `manifest.json`.
-
-## Setup and Installation
-
-### Option A: Using Docker (Recommended)
-
-This is the easiest and most reproducible method. Ensure you have Docker and the NVIDIA Container Toolkit installed.
-
-1. **Build the Docker Image**:
-
-   ```
-   docker build -t lipgen-asd .
-   ```
-
-2. **Run the Container**:
-   Mount your project directory and a directory containing your videos into the container.
-
-   ```
-   docker run --gpus all -it --rm \
-     -v /path/to/your/project:/app \
-     -v /path/to/your/videos:/videos \
-     lipgen-asd
-   ```
-
-### Option B: Manual Installation
-
-1. **Prerequisites**:
-
-   * An Ubuntu-based system (tested on WSL2 with Ubuntu 22.04).
-
-   * One or more NVIDIA GPUs with at least 12GB of VRAM.
-
-   * NVIDIA drivers installed on the host system.
-
-   * `conda` or `miniconda` installed.
-
-2. **Environment Setup**:
-
-   ```
-   git clone <your-repo-url>
-   cd <your-repo-name>
-   
-   # Create a conda environment
-   conda create -n sLipGen python=3.10 -y
-   conda activate sLipGen
-   
-   # Install PyTorch with CUDA support
-   # Check [https://pytorch.org/](https://pytorch.org/) for the command matching your CUDA version
-   pip3 install torch torchvision torchaudio --index-url [https://download.pytorch.org/whl/cu118](https://download.pytorch.org/whl/cu118)
-   
-   # Install remaining dependencies from requirements.txt
-   pip install -r requirements.txt
-   ```
-
-## Usage Guide
-
-### 1. Configuration (Crucial Step)
-
-Before running, open `optimized_runner.py` and configure the GPU settings within the `Config` class based on your hardware.
-
-**For a Dual-GPU setup (Maximum Performance):**
+システムの運用ワークフローは、以下に示される逐次的な多段階パイプラインによって定義されます。
 
 ```
-class Config:
-    WHISPER_DEVICE: str = "cuda:0"  # Assign Whisper to your first GPU
-    VISION_DEVICE: str = "cuda:1"   # Assign Vision models to your second GPU
-    # ... other settings
+graph TD
+    A[入力ビデオ] --> B{ステージ1: 前処理};
+    B --> C[全フレームの抽出];
+    B --> D[音声の抽出とリサンプリング];
+    
+    C & D --> E{ステージ2: ビジョン分析};
+    E --> F[シーンチェンジの検出];
+    E --> G[全フレームでの顔検出];
+    F & G --> H[シーン内での顔追跡];
+    
+    H & D --> I{ステージ3: 話者スコアリング (ASD)};
+    I --> J[各顔トラックに対してビデオと音声をクロップ];
+    I --> K[ASDモデルで視聴覚の同期をスコアリング];
+    
+    D --> L{ステージ4: 書き起こし};
+    L --> M[Whisperで全音声を書き起こし];
+    
+    K & M --> N{ステージ5: 最終組立};
+    N --> O[書き起こされた各文に対して...];
+    O --> P{ASDスコアに基づき最適な顔トラックを探索};
+    P --> Q[最終的な.mp4クリップと.txtファイルを生成];
+    Q --> R[manifest.jsonを書き込み];
+    R --> S[完了];
 ```
 
-**For a Single-GPU setup:**
+## システムのデプロイと設定
+
+システムのデプロイには、Dockerを使用したコンテナ化環境（推奨）またはホストマシンへの手動インストールの2つの方法が提供されています。
+
+### オプションA: Dockerの使用（推奨）
+
+この方法は、すべての依存関係がプリインストールされた、自己完結型で再現可能な環境を提供します。2つの方法で実行できます。
+
+#### **初期設定（一度だけ実行）**
+1.  **リポジトリのクローン:**
+    ```bash
+    git clone [https://github.com/sthasmn/sLipGen.git](https://github.com/sthasmn/sLipGen.git)
+    cd sLipGen
+    ```
+
+2.  **Dockerイメージのビルド:**
+    プロジェクトディレクトリのルートから次のコマンドを実行します。
+    ```bash
+    docker build -t slipgen .
+    ```
+
+#### **モード1: 直接処理（ワンオフタスク）**
+これはビデオのバッチを処理する最も簡単な方法です。コンテナは起動し、スクリプトを実行し、終了すると停止します。
+```bash
+# /path/to/your/local/videos をお使いのマシンの実際のパスに置き換えてください
+docker run --gpus all --rm -it \\
+  -v /path/to/your/local/videos:/videos \\
+  slipgen python main.py /videos/
+```
+`skip-asd`フラグを使用するには、コマンドにそれを追加します:
+```bash
+docker run --gpus all --rm -it \\
+  -v /path/to/your/local/videos:/videos \\
+  slipgen python main.py /videos/ skip-asd
+```
+
+#### **モード2: 永続コンテナ（SSHおよび開発用）**
+このモードはデバッグや他のスクリプトを実行するのに便利です。コンテナはSSHサーバーとしてバックグラウンドで継続的に実行されます。
+
+1.  **永続コンテナの起動:**
+    ```bash
+    # /path/to/your/local/videos をお使いのマシンの実際のパスに置き換えてください
+    docker run --gpus all -d --name slipgen-dev \\
+      -v /path/to/your/local/videos:/videos \\
+      -p 127.0.0.1:2222:22 \\
+      slipgen
+    ```
+
+2.  **SSH経由での接続:**
+    * **ユーザー:** `lipgen`
+    * **パスワード:** `lipgen`
+    ```bash
+    ssh lipgen@localhost -p 2222
+    ```
+
+3.  **内部でのコマンド実行:**
+    ```bash
+    # 例: メインの処理スクリプトを実行
+    python main.py /videos/
+    ```
+
+4.  **コンテナの停止:**
+    ```bash
+    docker stop slipgen-dev
+    ```
+
+### オプションB: 手動インストール
+
+#### **前提条件**
+* UbuntuベースのOSを推奨。
+* 16GB以上のVRAMを持つNVIDIA GPU。
+* NVIDIAドライバとCUDA Toolkit。
+* `conda`または`miniconda`。
+* `ffmpeg`がインストールされ、システムのPATHに含まれていること。
+
+#### **環境設定**
+1.  **リポジトリの取得:**
+    ```bash
+    git clone [https://github.com/sthasmn/sLipGen.git](https://github.com/sthasmn/sLipGen.git)
+    cd sLipGen
+    ```
+
+2.  **環境の初期化:**
+    ```bash
+    conda create -n sLipGen python=3.10 -y
+    conda activate sLipGen
+    ```
+
+3.  **依存関係のインストール:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+## 運用手順（手動インストール）
+
+### 1. パラメータ設定
+
+実行前に、`main.py`スクリプト内の`Config`クラスでシステムパラメータを変更できます。
+* `DEVICE`: ターゲットCUDAデバイス識別子（例: `"cuda:0"`）。
+* `WHISPER_MODEL_SIZE`: 使用するWhisperモデルのバリアント。
+* `MIN_SPEAKER_SCORE_THRESHOLD`: ビデオセグメント生成に必要なASDモデルの最小信頼スコア。
+
+### 2. パイプラインの実行
+
+有効化されたconda環境からメインスクリプトを実行します。
+```bash
+python main.py /path/to/your/videos/
+```
+`skip-asd`フラグを使用する場合:
+```bash
+python main.py /path/to/your/videos/ skip-asd
+```
+
+## 出力成果物とディレクトリ構造
+
+入力ファイル（例: `my_video.mp4`）の処理が完了すると、対応するディレクトリ（`my_video/`）が生成され、以下のような構造で構成されます。
 
 ```
-class Config:
-    WHISPER_DEVICE: str = "cuda:0"  # Assign Whisper to your only GPU
-    VISION_DEVICE: str = "cuda:0"   # Assign Vision models to the SAME GPU
-    # ... other settings
+my_video/
+├── pyavi/
+│   └── audio.wav         # 抽出されたマスター音声ファイル
+├── pycrop/               # ASDスコアリング用の一時的なクロップ済みクリップ
+├── pyframes/             # 抽出された全ビデオフレーム（JPG）
+├── pywork/
+│   ├── faces.pckl        # 顔検出データ
+│   ├── scene.pckl        # シーンチェンジデータ
+│   ├── scores.pckl       # 各トラックのASDスコア
+│   └── tracks.pckl       # 顔トラックデータ
+└── output/
+    ├── seg_0001_track_005.mp4
+    ├── seg_0001_track_005.txt
+    ├── ...
+    └── manifest.json     # 全生成クリップのJSONサマリー
 ```
 
-### 2. Running the Pipeline
+## 謝辞
 
-Place all your input videos into a single directory. Then, from within your Docker container or activated conda environment, run the script:
-
-```
-python optimized_runner.py /path/to/your/videos/
-```
-
-### 3. Understanding the Output
-
-For each input video (e.g., `my_video.mp4`), a corresponding output directory (`my_video/`) will be created containing intermediate files and the final clips in an `output/` subdirectory. The `manifest.json` file provides a detailed summary of each generated clip.
-
-## Acknowledgements
-
-This work is built upon several incredible open-source projects:
-
-* **TalkNet**: The core ASD model architecture.
-
-* **S3FD**: The face detection model.
-
-* **Whisper**: The transcription model from OpenAI.
-
-* **PySceneDetect**: Used for robust scene detection.
+この作業は、いくつかの基礎となるオープンソースプロジェクトの能力に基づいて行われています。以下に正式な謝辞を表明します:
+* **TalkNet**: コアとなる話者検出モデルのアーキテクチャ。
+* **S3FD**: 本研究で利用された顔検出モデル。
+* **Whisper**: OpenAIによって開発された自動音声認識モデル。
+* **PySceneDetect**: シーン境界検出に採用されたライブラリ。

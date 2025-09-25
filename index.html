@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sLipGen - Automated Video Segmentation System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+        .lang-ja { display: none; }
+        .code-block {
+            position: relative;
+            background-color: #1f2937;
+            color: #d1d5db;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            border: 1px solid #374151;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background-color: #4b5563;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 0.75rem;
+        }
+        .copy-btn:hover { background-color: #6b7280; }
+
+        /* Animation Base Styles */
+        .section-fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .section-fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Pipeline Animation Styles */
+        .pipeline-stage {
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+        }
+        .pipeline-stage.visible {
+            opacity: 1;
+        }
+        .pipeline-line {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            transition: stroke-dashoffset 2s ease-in-out;
+        }
+        .pipeline-line.visible {
+            stroke-dashoffset: 0;
+        }
+        .pulse-icon {
+            animation: pulse 2s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 antialiased">
+
+    <!-- Header -->
+    <header class="bg-gray-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-700">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-2xl font-extrabold text-white">
+                s<span class="text-blue-500">Lip</span>Gen
+            </div>
+            <div class="flex items-center space-x-4">
+                <div id="lang-switcher" class="flex items-center border border-gray-600 rounded-full p-1 cursor-pointer bg-gray-800">
+                    <button data-lang="en" class="lang-btn bg-blue-600 text-white rounded-full px-3 py-1 text-sm font-semibold">EN</button>
+                    <button data-lang="ja" class="lang-btn text-gray-400 rounded-full px-3 py-1 text-sm font-semibold">JA</button>
+                </div>
+                <a href="https://github.com/sthasmn/sLipGen" target="_blank" class="text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.168 6.839 9.49.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.338 4.695-4.566 4.943.359.308.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z" clip-rule="evenodd" /></svg>
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <main class="container mx-auto px-6 py-16 sm:py-24">
+        <section class="text-center section-fade-in">
+            <h1 class="text-4xl md:text-6xl font-extrabold text-white leading-tight">
+                <span class="lang-en">Automated Active Speaker Detection</span>
+                <span class="lang-ja">自動話者検出と</span>
+                <br class="hidden md:block">
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
+                    <span class="lang-en">& Temporal Video Segmentation</span>
+                    <span class="lang-ja">動画の時間的セグメンテーション</span>
+                </span>
+            </h1>
+            <p class="mt-6 max-w-2xl mx-auto text-lg text-gray-400">
+                <span class="lang-en">A system for creating large-scale, Japanese lip-reading datasets from in-the-wild videos like TV programs.</span>
+                <span class="lang-ja">テレビ番組などの自然な映像から、大規模な日本語の読唇データセットを作成するためのシステム。</span>
+            </p>
+        </section>
+
+        <!-- The Pipeline Animation -->
+        <section class="mt-24 sm:mt-32 section-fade-in">
+            <h2 class="text-3xl md:text-4xl font-bold text-center text-white">
+                <span class="lang-en">How It Works: The Full Pipeline</span>
+                <span class="lang-ja">仕組み：完全なパイプライン</span>
+            </h2>
+            <div class="mt-16 max-w-4xl mx-auto relative">
+                <!-- SVG lines connecting the stages -->
+                <svg class="absolute top-0 left-1/2 -translate-x-1/2 h-full w-full" width="100" height="100%" viewBox="0 0 100 1200" preserveAspectRatio="none">
+                    <path class="pipeline-line" d="M 50 20 V 1180" stroke="#4b5563" stroke-width="2" fill="none"/>
+                </svg>
+
+                <div class="space-y-24">
+                    <!-- Stage 1: Input -->
+                    <div class="pipeline-stage text-center relative">
+                        <div class="inline-block bg-gray-800 p-4 rounded-full border border-gray-700 pulse-icon">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.55a2 2 0 010 3.1l-4.55 3.4A2 2 0 0113 18.15V5.85a2 2 0 012-1.65zM4 12h9" /></svg>
+                        </div>
+                        <h3 class="mt-4 text-xl font-bold text-white">
+                            <span class="lang-en">1. Input: In-the-Wild Video</span>
+                            <span class="lang-ja">1. 入力：自然な環境のビデオ</span>
+                        </h3>
+                        <p class="text-gray-400 max-w-md mx-auto">
+                            <span class="lang-en">The process starts with any standard video file, typically Japanese TV programs.</span>
+                            <span class="lang-ja">プロセスは、主に日本のテレビ番組など、あらゆる標準的なビデオファイルから始まります。</span>
+                        </p>
+                    </div>
+
+                    <!-- Stage 2: Pre-processing -->
+                    <div class="pipeline-stage text-center relative">
+                        <div class="inline-block bg-gray-800 p-4 rounded-full border border-gray-700">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" /></svg>
+                        </div>
+                        <h3 class="mt-4 text-xl font-bold text-white">
+                            <span class="lang-en">2. Pre-processing</span>
+                            <span class="lang-ja">2. 前処理</span>
+                        </h3>
+                        <p class="text-gray-400 max-w-md mx-auto">
+                            <span class="lang-en">The video is split into two streams: individual image frames and a standardized audio track.</span>
+                            <span class="lang-ja">ビデオは個々の画像フレームと標準化された音声トラックの2つのストリームに分割されます。</span>
+                        </p>
+                         <div class="flex justify-center gap-8 mt-4">
+                            <span class="text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 010-2.828L16 8" /></svg> Frames</span>
+                            <span class="text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.636 5.636a9 9 0 0112.728 0M8.464 15.536a5 5 0 010-7.072" /></svg> Audio</span>
+                        </div>
+                    </div>
+
+                    <!-- Stage 3: Vision Analysis -->
+                    <div class="pipeline-stage text-center relative">
+                        <div class="inline-block bg-gray-800 p-4 rounded-full border border-gray-700">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        </div>
+                        <h3 class="mt-4 text-xl font-bold text-white">
+                            <span class="lang-en">3. Vision Analysis</span>
+                            <span class="lang-ja">3. ビジョン分析</span>
+                        </h3>
+                        <p class="text-gray-400 max-w-md mx-auto">
+                           <span class="lang-en">Frames are analyzed for scene cuts, faces are detected with bounding boxes, and then tracked across frames.</span>
+                           <span class="lang-ja">フレームはシーンカットのために分析され、顔がバウンディングボックスで検出され、フレーム間で追跡されます。</span>
+                        </p>
+                    </div>
+
+                    <!-- Stage 4: Speaker Scoring (ASD) -->
+                    <div class="pipeline-stage text-center relative">
+                         <div class="inline-block bg-gray-800 p-4 rounded-full border border-gray-700">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                        </div>
+                        <h3 class="mt-4 text-xl font-bold text-white">
+                             <span class="lang-en">4. Speaker Scoring (ASD)</span>
+                             <span class="lang-ja">4. 話者スコアリング (ASD)</span>
+                        </h3>
+                        <p class="text-gray-400 max-w-md mx-auto">
+                           <span class="lang-en">The ASD model synchronizes face tracks with the audio, scoring each face for how likely they are to be the speaker.</span>
+                           <span class="lang-ja">ASDモデルが顔の軌跡と音声を同期させ、各顔が話者である可能性をスコアリングします。</span>
+                        </p>
+                    </div>
+
+                    <!-- Stage 5: Transcription -->
+                    <div class="pipeline-stage text-center relative">
+                         <div class="inline-block bg-gray-800 p-4 rounded-full border border-gray-700">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+                        </div>
+                        <h3 class="mt-4 text-xl font-bold text-white">
+                             <span class="lang-en">5. Transcription</span>
+                             <span class="lang-ja">5. 書き起こし</span>
+                        </h3>
+                        <p class="text-gray-400 max-w-md mx-auto">
+                            <span class="lang-en">OpenAI's Whisper transcribes the entire audio track, generating text with word-level timestamps.</span>
+                            <span class="lang-ja">OpenAIのWhisperが音声トラック全体を書き起こし、単語レベルのタイムスタンプ付きテキストを生成します。</span>
+                        </p>
+                    </div>
+
+                    <!-- Stage 6: Final Assembly -->
+                    <div class="pipeline-stage text-center relative">
+                        <div class="inline-block bg-gray-800 p-4 rounded-full border border-gray-700">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14v6m-3-3h6M3 10h2a2 2 0 012 2v6a2 2 0 01-2 2H3a2 2 0 01-2-2v-6a2 2 0 012-2zM3 4h6a2 2 0 012 2v2H3V6a2 2 0 012-2z" /></svg>
+                        </div>
+                        <h3 class="mt-4 text-xl font-bold text-white">
+                            <span class="lang-en">6. Final Assembly</span>
+                            <span class="lang-ja">6. 最終組立</span>
+                        </h3>
+                        <p class="text-gray-400 max-w-md mx-auto">
+                            <span class="lang-en">High-scoring speakers are matched with transcribed sentences to generate final, labeled video clips and text files.</span>
+                            <span class="lang-ja">高スコアの話者と書き起こされた文が照合され、最終的なラベル付きビデオクリップとテキストファイルが生成されます。</span>
+                        </p>
+                    </div>
+
+                    <!-- Stage 7: Output -->
+                    <div class="pipeline-stage text-center relative">
+                        <div class="inline-block bg-gray-800 p-4 rounded-full border border-gray-700">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                        </div>
+                        <h3 class="mt-4 text-xl font-bold text-white">
+                             <span class="lang-en">7. Output: Lipreading Dataset</span>
+                             <span class="lang-ja">7. 出力：読唇データセット</span>
+                        </h3>
+                        <p class="text-gray-400 max-w-md mx-auto">
+                            <span class="lang-en">The result is a structured folder of video clips, text files, and a `manifest.json`, ready for training ML models.</span>
+                            <span class="lang-ja">結果は、MLモデルのトレーニングに使用できる、ビデオクリップ、テキストファイル、`manifest.json`で構成された構造化フォルダです。</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Setup and Usage -->
+        <section class="mt-24 sm:mt-32 section-fade-in">
+            <h2 class="text-3xl md:text-4xl font-bold text-center text-white">
+                <span class="lang-en">Setup & Usage Guide</span>
+                <span class="lang-ja">セットアップと使用ガイド</span>
+            </h2>
+            <div class="mt-12 max-w-4xl mx-auto bg-gray-800/50 p-8 rounded-lg border border-gray-700 shadow-lg">
+                <h3 class="text-2xl font-semibold mb-4 text-blue-400">
+                    <span class="lang-en">Option A: Using Docker (Recommended)</span>
+                    <span class="lang-ja">オプションA: Dockerの使用（推奨）</span>
+                </h3>
+
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="font-semibold text-gray-100">
+                            <span class="lang-en">1. Clone the Repository</span>
+                            <span class="lang-ja">1. リポジトリのクローン</span>
+                        </h4>
+                        <div class="code-block mt-2">
+                            <button class="copy-btn">Copy</button>
+                            <code>git clone https://github.com/sthasmn/sLipGen.git<br>cd sLipGen</code>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-gray-100">
+                            <span class="lang-en">2. Build the Docker Image</span>
+                            <span class="lang-ja">2. Dockerイメージのビルド</span>
+                        </h4>
+                        <div class="code-block mt-2">
+                            <button class="copy-btn">Copy</button>
+                            <code>docker build -t slipgen .</code>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-gray-100">
+                            <span class="lang-en">3. Run the Pipeline</span>
+                            <span class="lang-ja">3. パイプラインの実行</span>
+                        </h4>
+                        <p class="text-gray-400 text-sm mt-2 mb-2">
+                            <span class="lang-en">Choose one of the two modes below.</span>
+                            <span class="lang-ja">以下の2つのモードから1つを選択してください。</span>
+                        </p>
+
+                        <h5 class="font-medium text-gray-200">
+                            <span class="lang-en">Mode 1: Direct Processing</span>
+                            <span class="lang-ja">モード1: 直接処理</span>
+                        </h5>
+                        <div class="code-block mt-2">
+                            <button class="copy-btn">Copy</button>
+                            <code># Replace /path/to/your/videos with your actual path
+docker run --gpus all --rm -it \
+  -v /path/to/your/videos:/videos \
+  slipgen python main.py /videos/</code>
+                        </div>
+
+                        <h5 class="font-medium text-gray-200 mt-4">
+                            <span class="lang-en">Mode 2: Persistent Container (for SSH)</span>
+                            <span class="lang-ja">モード2: 永続コンテナ（SSH用）</span>
+                        </h5>
+                        <div class="code-block mt-2">
+                            <button class="copy-btn">Copy</button>
+                            <code># Start the container
+docker run --gpus all -d --name slipgen-dev \
+  -v /path/to/your/videos:/videos \
+  -p 127.0.0.1:2222:22 \
+  slipgen
+
+# Connect via SSH (User: lipgen, Pass: lipgen)
+ssh lipgen@localhost -p 2222</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-gray-900 border-t border-gray-700 mt-20">
+        <div class="container mx-auto px-6 py-8 text-center text-gray-500">
+            <p>&copy; 2025 sLipGen Project. All rights reserved.</p>
+        </div>
+    </footer>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Language Switcher ---
+        const langSwitcher = document.getElementById('lang-switcher');
+        const langButtons = langSwitcher.querySelectorAll('.lang-btn');
+        const allLangElements = document.querySelectorAll('.lang-en, .lang-ja');
+        const htmlEl = document.documentElement;
+
+        function setLanguage(lang) {
+            htmlEl.lang = lang;
+            allLangElements.forEach(el => {
+                el.style.display = el.classList.contains(`lang-${lang}`) ? 'inline' : 'none';
+            });
+            langButtons.forEach(btn => {
+                if (btn.dataset.lang === lang) {
+                    btn.classList.add('bg-blue-600', 'text-white');
+                    btn.classList.remove('text-gray-400');
+                } else {
+                    btn.classList.remove('bg-blue-600', 'text-white');
+                    btn.classList.add('text-gray-400');
+                }
+            });
+            localStorage.setItem('preferredLang', lang);
+        }
+
+        langSwitcher.addEventListener('click', (e) => {
+            if (e.target.matches('.lang-btn')) {
+                setLanguage(e.target.dataset.lang);
+            }
+        });
+
+        const preferredLang = localStorage.getItem('preferredLang') || 'en';
+        setLanguage(preferredLang);
+
+        // --- Copy to Clipboard ---
+        document.querySelectorAll('.copy-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const codeBlock = button.nextElementSibling;
+                const textToCopy = codeBlock.innerText;
+                const textArea = document.createElement('textarea');
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    button.textContent = 'Copied!';
+                    setTimeout(() => { button.textContent = 'Copy'; }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                    button.textContent = 'Failed!';
+                }
+                document.body.removeChild(textArea);
+            });
+        });
+
+        // --- Intersection Observer for Animations ---
+        const observerOptions = { threshold: 0.1 };
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    // For pipeline lines, find the SVG path and trigger its animation
+                    const line = entry.target.querySelector('.pipeline-line, .pipeline-stage .pipeline-line');
+                    if(line) line.classList.add('visible');
+
+                    if (!entry.target.classList.contains('pipeline-stage')) {
+                         observer.unobserve(entry.target);
+                    }
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.section-fade-in, .pipeline-stage').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Specifically observe the main SVG line container to trigger it
+        const mainLineSvg = document.querySelector('.max-w-4xl.relative > svg > .pipeline-line');
+        if(mainLineSvg) {
+            const lineObserver = new IntersectionObserver((entries) => {
+                if(entries[0].isIntersecting){
+                    mainLineSvg.classList.add('visible');
+                }
+            }, { threshold: 0.1 });
+            lineObserver.observe(mainLineSvg.parentElement);
+        }
+
+    });
+</script>
+
+</body>
+</html>
+
