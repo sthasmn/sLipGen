@@ -87,7 +87,7 @@ docker run --gpus all --rm -it \\
     # /path/to/your/local/videos をお使いのマシンの実際のパスに置き換えてください
     docker run --gpus all -d --name slipgen-dev \\
       -v /path/to/your/local/videos:/videos \\
-      -p 127.0.0.1:2222:22 \\
+      -p 0.0.0.0:2222:22 \\
       slipgen
     ```
 

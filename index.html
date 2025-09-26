@@ -244,82 +244,107 @@
                 <span class="lang-ja">セットアップと使用ガイド</span>
             </h2>
             <div class="mt-12 max-w-4xl mx-auto space-y-12">
-                <!-- Docker Section -->
-                <div class="bg-gray-800/50 p-8 rounded-lg border border-gray-700 shadow-lg">
+                <!-- NEW: Automated Windows Setup Section -->
+                <div class="bg-gray-800/50 p-8 rounded-lg border border-blue-500 shadow-lg ring-2 ring-blue-500/50">
                     <h3 class="text-2xl font-semibold mb-4 text-blue-400">
-                        <span class="lang-en">Option A: Using Docker (Recommended)</span>
-                        <span class="lang-ja">オプションA: Dockerの使用（推奨）</span>
+                        <span class="lang-en">Option A: Automated Windows Setup (Recommended)</span>
+                        <span class="lang-ja">オプションA: 自動Windowsセットアップ（推奨）</span>
                     </h3>
-
+                    <p class="text-gray-400 text-sm mb-6">
+                        <span class="lang-en">This PowerShell script handles WSL, Docker, and Git checks, then clones, builds, and runs the project.</span>
+                        <span class="lang-ja">このPowerShellスクリプトは、WSL、Docker、Gitのチェックを行い、プロジェクトのクローン、ビルド、実行までを処理します。</span>
+                    </p>
                     <div class="space-y-6">
-                        <div>
-                            <h4 class="font-semibold text-gray-100">
-                                <span class="lang-en">1. Clone the Repository</span>
-                                <span class="lang-ja">1. リポジトリのクローン</span>
+                         <div>
+                             <h4 class="font-semibold text-gray-100">
+                                <span class="lang-en">1. Prerequisites</span>
+                                <span class="lang-ja">1. 前提条件</span>
                             </h4>
-                            <div class="code-block mt-2">
-                                <button class="copy-btn">Copy</button>
-                                <code>git clone https://github.com/sthasmn/sLipGen.git<br>cd sLipGen</code>
-                            </div>
+                            <ul class="list-disc list-inside mt-2 text-gray-400 space-y-1">
+                                <li><span class="lang-en">Windows 10 or 11</span><span class="lang-ja">Windows 10または11</span></li>
+                                <li><span class="lang-en">PowerShell (Run as Administrator)</span><span class="lang-ja">PowerShell（管理者として実行）</span></li>
+                            </ul>
                         </div>
-
                         <div>
                             <h4 class="font-semibold text-gray-100">
-                                <span class="lang-en">2. Build the Docker Image</span>
-                                <span class="lang-ja">2. Dockerイメージのビルド</span>
-                            </h4>
-                            <div class="code-block mt-2">
-                                <button class="copy-btn">Copy</button>
-                                <code>docker build -t slipgen .</code>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h4 class="font-semibold text-gray-100">
-                                <span class="lang-en">3. Run the Pipeline</span>
-                                <span class="lang-ja">3. パイプラインの実行</span>
+                                <span class="lang-en">2. Run the Automated Setup</span>
+                                <span class="lang-ja">2. 自動セットアップの実行</span>
                             </h4>
                             <p class="text-gray-400 text-sm mt-2 mb-2">
-                                <span class="lang-en">Choose one of the two modes below.</span>
-                                <span class="lang-ja">以下の2つのモードから1つを選択してください。</span>
+                                <span class="lang-en">Download the <code>setup-and-run.ps1</code> script from the repository. Open PowerShell as an Administrator, navigate to the script's location, and run the following command:</span>
+                                <span class="lang-ja">リポジトリから<code>setup-and-run.ps1</code>スクリプトをダウンロードします。PowerShellを管理者として開き、スクリプトの場所に移動して、次のコマンドを実行します。</span>
                             </p>
-
-                            <h5 class="font-medium text-gray-200">
-                                <span class="lang-en">Mode 1: Direct Processing</span>
-                                <span class="lang-ja">モード1: 直接処理</span>
-                            </h5>
                             <div class="code-block mt-2">
                                 <button class="copy-btn">Copy</button>
-                                <code># Replace /path/to/your/videos with your actual path
-docker run --gpus all --rm -it \
-  -v /path/to/your/videos:/videos \
-  slipgen python main.py /videos/</code>
-                            </div>
-
-                            <h5 class="font-medium text-gray-200 mt-4">
-                                <span class="lang-en">Mode 2: Persistent Container (for SSH)</span>
-                                <span class="lang-ja">モード2: 永続コンテナ（SSH用）</span>
-                            </h5>
-                            <div class="code-block mt-2">
-                                <button class="copy-btn">Copy</button>
-                                <code># Start the container
-docker run --gpus all -d --name slipgen-dev \
-  -v /path/to/your/videos:/videos \
-  -p 127.0.0.1:2222:22 \
-  slipgen
-
-# Connect via SSH (User: lipgen, Pass: lipgen)
-ssh lipgen@localhost -p 2222</code>
+                                <code># Replace "C:\path\to\your\videos" with your actual path
+.\setup-and-run.ps1 -VideosPath "C:\path\to\your\videos"</code>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Manual Installation Section -->
+                <!-- Manual Docker Section -->
+                <div class="bg-gray-800/50 p-8 rounded-lg border border-gray-700 shadow-lg">
+                    <h3 class="text-2xl font-semibold mb-4 text-green-400">
+                        <span class="lang-en">Option B: Manual Docker Setup (Linux/macOS)</span>
+                        <span class="lang-ja">オプションB: 手動Dockerセットアップ（Linux/macOS）</span>
+                    </h3>
+
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="font-semibold text-gray-100">
+                                <span class="lang-en">1. Clone & Build</span>
+                                <span class="lang-ja">1. クローン & ビルド</span>
+                            </h4>
+                            <div class="code-block mt-2">
+                                <button class="copy-btn">Copy</button>
+                                <code>git clone https://github.com/sthasmn/sLipGen.git
+cd sLipGen
+docker build -t slipgen .</code>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="font-semibold text-gray-100">
+                                <span class="lang-en">2. Run the Pipeline</span>
+                                <span class="lang-ja">2. パイプラインの実行</span>
+                            </h4>
+                            <p class="text-gray-400 text-sm mt-2 mb-2">
+                                <span class="lang-en">Choose Direct Processing for one-off tasks or Persistent for development.</span>
+                                <span class="lang-ja">一度きりのタスクには直接処理を、開発には永続コンテナを選択してください。</span>
+                            </p>
+
+                            <h5 class="font-medium text-gray-200">
+                                <span class="lang-en">Direct Processing</span>
+                                <span class="lang-ja">直接処理</span>
+                            </h5>
+                            <div class="code-block mt-2">
+                                <button class="copy-btn">Copy</button>
+                                <code>docker run --gpus all --rm -it \
+  -v /path/to/your/videos:/videos \
+  slipgen python main.py /videos/</code>
+                            </div>
+
+                            <h5 class="font-medium text-gray-200 mt-4">
+                                <span class="lang-en">Persistent Container (SSH)</span>
+                                <span class="lang-ja">永続コンテナ（SSH）</span>
+                            </h5>
+                            <div class="code-block mt-2">
+                                <button class="copy-btn">Copy</button>
+                                <code>docker run --gpus all -d --name slipgen-dev \
+  -v /path/to/your/videos:/videos \
+  -p 127.0.0.1:2222:22 \
+  slipgen</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Python Section -->
                 <div class="bg-gray-800/50 p-8 rounded-lg border border-gray-700 shadow-lg">
                     <h3 class="text-2xl font-semibold mb-4 text-teal-400">
-                        <span class="lang-en">Option B: Manual Installation</span>
-                        <span class="lang-ja">オプションB: 手動インストール</span>
+                        <span class="lang-en">Option C: Manual Python Setup</span>
+                        <span class="lang-ja">オプションC: 手動Pythonセットアップ</span>
                     </h3>
                     <div class="space-y-6">
                         <div>

@@ -5,6 +5,7 @@ torchvision
 torchaudio
 
 numpy
+pandas
 opencv-python
 openai-whisper
 scenedetect
