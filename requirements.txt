@@ -1,9 +1,12 @@
+# This flag tells pip to also look for packages on the PyTorch server for CUDA 12.1
 --extra-index-url https://download.pytorch.org/whl/cu121
-torch==2.8.0+cu121  # Make sure to match CUDA 12.1
-torchvision==0.23.0+cu121  # Match torch CUDA version
+torch==2.8.0
+torchvision
+torchaudio
+
 numpy
 opencv-python
-whisper
+openai-whisper
 scenedetect
 scipy
 tqdm
