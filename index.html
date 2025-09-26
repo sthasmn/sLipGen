@@ -243,64 +243,66 @@
                 <span class="lang-en">Setup & Usage Guide</span>
                 <span class="lang-ja">セットアップと使用ガイド</span>
             </h2>
-            <div class="mt-12 max-w-4xl mx-auto bg-gray-800/50 p-8 rounded-lg border border-gray-700 shadow-lg">
-                <h3 class="text-2xl font-semibold mb-4 text-blue-400">
-                    <span class="lang-en">Option A: Using Docker (Recommended)</span>
-                    <span class="lang-ja">オプションA: Dockerの使用（推奨）</span>
-                </h3>
+            <div class="mt-12 max-w-4xl mx-auto space-y-12">
+                <!-- Docker Section -->
+                <div class="bg-gray-800/50 p-8 rounded-lg border border-gray-700 shadow-lg">
+                    <h3 class="text-2xl font-semibold mb-4 text-blue-400">
+                        <span class="lang-en">Option A: Using Docker (Recommended)</span>
+                        <span class="lang-ja">オプションA: Dockerの使用（推奨）</span>
+                    </h3>
 
-                <div class="space-y-6">
-                    <div>
-                        <h4 class="font-semibold text-gray-100">
-                            <span class="lang-en">1. Clone the Repository</span>
-                            <span class="lang-ja">1. リポジトリのクローン</span>
-                        </h4>
-                        <div class="code-block mt-2">
-                            <button class="copy-btn">Copy</button>
-                            <code>git clone https://github.com/sthasmn/sLipGen.git<br>cd sLipGen</code>
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="font-semibold text-gray-100">
+                                <span class="lang-en">1. Clone the Repository</span>
+                                <span class="lang-ja">1. リポジトリのクローン</span>
+                            </h4>
+                            <div class="code-block mt-2">
+                                <button class="copy-btn">Copy</button>
+                                <code>git clone https://github.com/sthasmn/sLipGen.git<br>cd sLipGen</code>
+                            </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <h4 class="font-semibold text-gray-100">
-                            <span class="lang-en">2. Build the Docker Image</span>
-                            <span class="lang-ja">2. Dockerイメージのビルド</span>
-                        </h4>
-                        <div class="code-block mt-2">
-                            <button class="copy-btn">Copy</button>
-                            <code>docker build -t slipgen .</code>
+                        <div>
+                            <h4 class="font-semibold text-gray-100">
+                                <span class="lang-en">2. Build the Docker Image</span>
+                                <span class="lang-ja">2. Dockerイメージのビルド</span>
+                            </h4>
+                            <div class="code-block mt-2">
+                                <button class="copy-btn">Copy</button>
+                                <code>docker build -t slipgen .</code>
+                            </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <h4 class="font-semibold text-gray-100">
-                            <span class="lang-en">3. Run the Pipeline</span>
-                            <span class="lang-ja">3. パイプラインの実行</span>
-                        </h4>
-                        <p class="text-gray-400 text-sm mt-2 mb-2">
-                            <span class="lang-en">Choose one of the two modes below.</span>
-                            <span class="lang-ja">以下の2つのモードから1つを選択してください。</span>
-                        </p>
+                        <div>
+                            <h4 class="font-semibold text-gray-100">
+                                <span class="lang-en">3. Run the Pipeline</span>
+                                <span class="lang-ja">3. パイプラインの実行</span>
+                            </h4>
+                            <p class="text-gray-400 text-sm mt-2 mb-2">
+                                <span class="lang-en">Choose one of the two modes below.</span>
+                                <span class="lang-ja">以下の2つのモードから1つを選択してください。</span>
+                            </p>
 
-                        <h5 class="font-medium text-gray-200">
-                            <span class="lang-en">Mode 1: Direct Processing</span>
-                            <span class="lang-ja">モード1: 直接処理</span>
-                        </h5>
-                        <div class="code-block mt-2">
-                            <button class="copy-btn">Copy</button>
-                            <code># Replace /path/to/your/videos with your actual path
+                            <h5 class="font-medium text-gray-200">
+                                <span class="lang-en">Mode 1: Direct Processing</span>
+                                <span class="lang-ja">モード1: 直接処理</span>
+                            </h5>
+                            <div class="code-block mt-2">
+                                <button class="copy-btn">Copy</button>
+                                <code># Replace /path/to/your/videos with your actual path
 docker run --gpus all --rm -it \
   -v /path/to/your/videos:/videos \
   slipgen python main.py /videos/</code>
-                        </div>
+                            </div>
 
-                        <h5 class="font-medium text-gray-200 mt-4">
-                            <span class="lang-en">Mode 2: Persistent Container (for SSH)</span>
-                            <span class="lang-ja">モード2: 永続コンテナ（SSH用）</span>
-                        </h5>
-                        <div class="code-block mt-2">
-                            <button class="copy-btn">Copy</button>
-                            <code># Start the container
+                            <h5 class="font-medium text-gray-200 mt-4">
+                                <span class="lang-en">Mode 2: Persistent Container (for SSH)</span>
+                                <span class="lang-ja">モード2: 永続コンテナ（SSH用）</span>
+                            </h5>
+                            <div class="code-block mt-2">
+                                <button class="copy-btn">Copy</button>
+                                <code># Start the container
 docker run --gpus all -d --name slipgen-dev \
   -v /path/to/your/videos:/videos \
   -p 127.0.0.1:2222:22 \
@@ -308,9 +310,63 @@ docker run --gpus all -d --name slipgen-dev \
 
 # Connect via SSH (User: lipgen, Pass: lipgen)
 ssh lipgen@localhost -p 2222</code>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Manual Installation Section -->
+                <div class="bg-gray-800/50 p-8 rounded-lg border border-gray-700 shadow-lg">
+                    <h3 class="text-2xl font-semibold mb-4 text-teal-400">
+                        <span class="lang-en">Option B: Manual Installation</span>
+                        <span class="lang-ja">オプションB: 手動インストール</span>
+                    </h3>
+                    <div class="space-y-6">
+                        <div>
+                             <h4 class="font-semibold text-gray-100">
+                                <span class="lang-en">1. Prerequisites</span>
+                                <span class="lang-ja">1. 前提条件</span>
+                            </h4>
+                            <ul class="list-disc list-inside mt-2 text-gray-400 space-y-1">
+                                <li><span class="lang-en">Ubuntu-based OS recommended</span><span class="lang-ja">UbuntuベースのOSを推奨</span></li>
+                                <li><span class="lang-en">NVIDIA GPU with >= 16GB VRAM</span><span class="lang-ja">16GB以上のVRAMを搭載したNVIDIA GPU</span></li>
+                                <li><span class="lang-en">NVIDIA Drivers & CUDA Toolkit</span><span class="lang-ja">NVIDIAドライバ & CUDA Toolkit</span></li>
+                                <li><span class="lang-en">Conda or Miniconda</span><span class="lang-ja">CondaまたはMiniconda</span></li>
+                                <li><span class="lang-en">ffmpeg in system PATH</span><span class="lang-ja">システムのPATHに通ったffmpeg</span></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-100">
+                                <span class="lang-en">2. Environment Setup</span>
+                                <span class="lang-ja">2. 環境設定</span>
+                            </h4>
+                            <div class="code-block mt-2">
+                                <button class="copy-btn">Copy</button>
+                                <code># Clone the repository
+git clone https://github.com/sthasmn/sLipGen.git
+cd sLipGen
+
+# Create and activate conda environment
+conda create -n sLipGen python=3.10 -y
+conda activate sLipGen
+
+# Install all dependencies
+pip install -r requirements.txt</code>
+                            </div>
+                        </div>
+                        <div>
+                             <h4 class="font-semibold text-gray-100">
+                                <span class="lang-en">3. Run the Pipeline</span>
+                                <span class="lang-ja">3. パイプラインの実行</span>
+                            </h4>
+                            <div class="code-block mt-2">
+                                <button class="copy-btn">Copy</button>
+                                <code>python main.py /path/to/your/videos/</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </section>
 
