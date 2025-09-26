@@ -1,4 +1,4 @@
--f https://download.pytorch.org/whl/cu121
+--extra-index-url https://download.pytorch.org/whl/cu121
 torch==2.8.0+cu121  # Make sure to match CUDA 12.1
 torchvision==0.23.0+cu121  # Match torch CUDA version
 numpy
@@ -8,6 +8,5 @@ scenedetect
 scipy
 tqdm
 python_speech_features
-
 gdown
 
